@@ -1,5 +1,7 @@
 # Data Analysis Project # 2
 
+**Dataset filename:** gss.RData
+
 Project for online course on 'Inferential Statistics', Duke University. 
 
 This was course 2 of 5 under the 'Statistics with R Specialization'.
@@ -13,6 +15,8 @@ Since 1972, GSS has been monitoring societal change and studying the growing com
 GSS questions cover a diverse range of issues including national spending priorities, marijuana use, crime and punishment, race relations, quality of life, confidence in institutions, and sexual behavior.
 
 # Project Objective:
+
+**R program file:** stat_inf_project.rmd
 
 The Project objective consisted of 2 parts:
 1. Identifying 3 research questions based on the GSS database & use data analysis principles to help answer them.
