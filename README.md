@@ -18,4 +18,4 @@ The Project objective consisted of 2 parts:
 1. Identifying 3 research questions based on the GSS database & use data analysis principles to help answer them.
 2. All analysis were to be completed using the R programming language via RStudio, along with its write-up as an R Markdown document.
 
-To view the Project analysis report, [Click here]
+To view the Project analysis report, [Click here](https://prithpal11.github.io/Inferential-Statistics/stat_inf_project.html)
