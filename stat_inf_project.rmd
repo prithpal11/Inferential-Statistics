@@ -1,0 +1,571 @@
+---
+title: "Statistical inference with the GSS data"
+output:
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    df_print: default
+  pdf_document: default
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(statsr)
+library(kableExtra)
+```
+
+### Load data
+
+
+```{r load-data}
+load("gss.Rdata")
+```
+
+
+
+* * *
+
+## Part 1: Data
+The GSS website shares that each household was randomly selected from all households across the nation, with each region having equal probability of being selected. 
+
+Since the individuals are selected using random sampling and not randomly assigned; the survey is a type of an Observational study, the results **can thus be generalized for the entire population of US but no causal relation can be established.**
+
+Since the participation in the study is strictly voluntary, **the study would exhibit voluntary response bias.**
+
+* * *
+
+## Part 2.1: Research question 1:
+
+As per a PEW report ["7 facts about guns in the U.S."](https://www.pewresearch.org/fact-tank/2019/10/22/facts-about-guns-in-united-states/), protection tops the list of reasons why gun owners have a gun. We are also witnessing a rise in mass shootings, which could be attributed to ease of owning a firearm. 
+
+It would be interesting to study the relationship between the feeling of 'safety' and possession of firearms for the American population at large during the current century (2000-2012)
+
+If a relationship does exist, it is an area of concern which the government needs to address so that an US citizen feels safe and does not feel the need to possess a gun. If not, then the GSS surveys in the coming year should include questions that further investigates the prime reasons for possession of firearms by individuals. This can then be used by the government for drafting appropriate policies related to possession of firearms so that the instances of mass shooting do not occur.
+
+
+
+* * *
+
+## Part 3.1: Exploratory data analysis
+
+**DIRECT VARIABLES FROM GSS SURVEY DATABASE**
+
+  1. `year:` indicates the GSS survey year for a respondent
+  2. `fear:` measured as "Afraid to walk at night in neighborhood", an indicator of feeling safe
+  3. `owngun:` indicates if the individual has gun at home
+
+```{r : R1 Selecting variables of interest, echo=FALSE}
+
+df1.1<-gss %>% select(year, fear, owngun)
+summary(df1.1)
+```
+Looking at the variable summary, it is clear that the variable `year` is being considered as an integer instead of a categorical variable. Since this wont affect the analysis at hand & infact aids in easy sorting of data, the switch is not made.
+
+Next we clean the data & prepare a **Contingency table** as:
+```{r : R1 Omitting NA cells , echo=FALSE}
+df1.1 <- df1.1 %>%
+filter(!is.na(year), !is.na(fear), !is.na(owngun))
+```
+
+```{r : Contingency table 1, echo=FALSE}
+
+fl_sf_yes_gun<- nrow(df1.1[df1.1$year>=2000 & df1.1$fear=="No" & df1.1$owngun=="Yes" ,])
+fl_sf_no_gun<- nrow(df1.1[df1.1$year>=2000 & df1.1$fear=="No" & df1.1$owngun=="No" ,])
+fl_sf_rf_gun<- nrow(df1.1[df1.1$year>=2000 & df1.1$fear=="No" & df1.1$owngun=="Refused" ,])
+
+fl_unsf_yes_gun<- nrow(df1.1[df1.1$year>=2000 & df1.1$fear=="Yes" & df1.1$owngun=="Yes" ,])
+fl_unsf_no_gun<- nrow(df1.1[df1.1$year>=2000 & df1.1$fear=="Yes" & df1.1$owngun=="No" ,])
+fl_unsf_rf_gun<- nrow(df1.1[df1.1$year>=2000 & df1.1$fear=="Yes" & df1.1$owngun=="Refused" ,])
+
+tl_gun<- nrow(df1.1[df1.1$year>=2000 & df1.1$owngun=="Yes" ,])
+tl_no_gun<- nrow(df1.1[df1.1$year>=2000 & df1.1$owngun=="No" ,])
+tl_rf_gun<- nrow(df1.1[df1.1$year>=2000 & df1.1$owngun=="Refused" ,])
+
+tl_sf<- nrow(df1.1[df1.1$year>=2000 & df1.1$fear=="No" ,])
+tl_unsf<- nrow(df1.1[df1.1$year>=2000 & df1.1$fear=="Yes" ,])
+
+
+r1<- round(fl_sf_yes_gun / (fl_sf_yes_gun + fl_unsf_yes_gun),digits = 3)
+r2<- round(fl_sf_no_gun / (fl_sf_no_gun + fl_unsf_no_gun), digits = 3)
+
+
+Contingency_table <- matrix(c(fl_sf_yes_gun, fl_sf_no_gun, fl_sf_rf_gun, tl_sf, fl_unsf_yes_gun, fl_unsf_no_gun, fl_unsf_rf_gun, tl_unsf, tl_gun, tl_no_gun, tl_rf_gun, tl_sf+tl_unsf, r1, r2, "-", "-" ),ncol=4,byrow=TRUE)
+colnames(Contingency_table) <- c("Possess firearm","Do not possess firearm", "Refused", "Total")
+rownames(Contingency_table) <- c("Feel safe", "Feel unsafe", "Total", "Proportions")
+Contingency_table <- as.table(Contingency_table)
+
+kable(Contingency_table) %>%
+  add_header_above(c("CONTINGENCY TABLE 1 (2000 - 2012)"=5))%>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+
+* * *
+
+## Part 4.1: Inference
+
+Looking at the two proportions, it is not possible to conclude whether or not possession of a gun is related to an individual feeling safe.
+
+Since we are comparing two proportions, we can either use Hypothesis testing (two-sided) or confidence interval for answering the question at hand: 
+**Is "Possessing a gun" & " Feeling safe" independent of each other?**
+
+**PART A: HYPOTHESIS TESTING:**
+
+We set the hypothesis test, at 5 % significance level as:
+
+<li> $H_0: {p}_{safe-with-gun} = {p}_{safe-without-gun}$ or $H_0: {p}_{safe-with-gun} - {p}_{safe-without-gun} = 0$ </li>
+<li> $H_A: {p}_{safe-with-gun} \ne {p}_{safe-without-gun}$ or $H_A: {p}_{safe-with-gun} - {p}_{safe-without-gun} \ne 0$ </li>
+
+
+\
+
+<li>**Pooled Proportion** </li>
+
+Before checking for conditions, we need to calculate the `pooled proportion`, $\hat{p}_{pool}$.
+
+```{r : Calculating p_pool, echo=FALSE}
+p_pool <- round(((fl_sf_yes_gun + fl_sf_no_gun) / ( tl_gun + tl_no_gun)),digits=3)
+  
+```
+
+
+$\hat{p}_{pool}$ = ( `r fl_sf_yes_gun` + `r fl_sf_no_gun`) / (`r tl_gun` + `r tl_no_gun`) = `r p_pool`
+\
+
+
+<li> **Checking for Conditions:**</li>
+
+**1. Independence:**
+
+**a. Within groups:** Since the individuals were randomly sampled without replacement & since `r (tl_sf+tl_unsf)` < 10% of the US population, this condition is met.
+  
+**b. Between groups:** Since only one person from each household was interviewed, the two groups are independent of each other.
+\  
+  
+**2. Sample size / skew:** 
+
+Each group should meet the success-failure condition using $\hat{p}_{pool}$.
+\
+
+**a. Possess gun:** 
+  
+<li> Sample size, n~1~ = `r tl_gun` </li>
+
+<li> # of Success, n~1~ x $\hat{p}_{pool}$ = `r (p_pool *tl_gun)` > 10, hence condition is met. </li>
+
+<li> # of Failure, n~1~ x (1 - $\hat{p}_{pool}$) = `r ((1-p_pool)*tl_no_gun)` > 10, hence condition is met. </li>
+
+**b. Feeling safe:** 
+  
+<li> Sample size, n~2~ = `r tl_no_gun` </li>
+
+<li> # of Success, n~2~ x $\hat{p}_{pool}$ = `r (p_pool*tl_no_gun)` > 10, hence condition is met. </li>
+
+<li> # of Failure, n~2~ x (1 - $\hat{p}_{pool}$) = `r ((1-p_pool)*tl_no_gun)` > 10, hence condition is met. </li>
+\
+Therefore we can assume that the sampling distribution of the difference between the two proportions is nearly normal.
+\
+\
+**Since the conditions are met, we can now proceed with our two-sided Hypothesis testing.**
+
+```{r : Filter for required range for years, echo=FALSE}
+df1.1 <- df1.1 %>%
+  filter(year >= 2000, owngun !="Refused")
+df1.1$owngun <- droplevels(df1.1$owngun)
+
+```
+
+```{r,  echo=FALSE}
+
+# Hypothesis testing
+
+inference(y=fear, x=owngun, data = df1.1, statistic = "proportion", type = "ht", null = 0, alternative = "twosided", method = "theoretical", success = "No")
+
+```
+
+``` {r : dev, echo=FALSE, results='hide'}
+dev.off()
+
+```
+
+**Conclusion: **
+
+Since the p_value < 0.05 for the set significance level, **we reject the null hypothesis in favor of the alternative.**
+
+Thus for the years 2000 - 2012, the US population feeling safe can be associated to an individual possessing a gun.
+
+**PART B: CONFIDENCE INTERVAL:**
+
+Using a 95% confidence interval, we estimate how feeling safe while possessing a gun compares to feeling safe without one for the US population at large.
+
+<li> **Checking for Conditions:**</li>
+
+**1. Independence:**
+
+**The reasoning is same as that for hypothesis testing**
+\  
+\
+  
+**2. Sample size / skew:** 
+
+Each group should meet the success-failure condition using their respective sample proportions, $\hat{p}_{safe-with-gun}$ = `r r1` &   $\hat{p}_{safe-without-gun}$ = `r r2`.\
+
+**a. Possess gun:** 
+  
+<li> Sample size, n~1~ = `r tl_gun`, $\hat{p}_{safe-with-gun}$ = `r r1` </li>
+
+<li> # of Success, n~1~ x $\hat{p}_{safe-with-gun}$ = `r round((r1 *tl_gun), digits=2)` > 10, hence condition is met. </li>
+
+<li> # of Failure, n~1~ x (1 - $\hat{p}_{safe-with-gun}$) = `r round(((1-r1)*tl_gun), digits=2)` > 10, hence condition is met. </li>
+
+**b. Feeling safe:** 
+  
+<li> Sample size, n~2~ = `r tl_no_gun`, $\hat{p}_{safe-without-gun}$ = `r r2`  </li>
+
+<li> # of Success, n~2~ x $\hat{p}_{safe-without-gun}$ = `r round((r2 *tl_no_gun), digits=2)` > 10, hence condition is met. </li>
+
+<li> # of Failure, n~2~ x (1 - $\hat{p}_{safe-without-gun}$) = `r round(((1-r2)*tl_no_gun), digits=2)` > 10, hence condition is met. </li>
+\
+Therefore we can assume that the sampling distribution of the difference between the two proportions is nearly normal.
+\
+\
+**Since the conditions are met, we can proceed with our inference testing using confidence interval method.**
+
+```{r, echo=FALSE}
+
+# Confidence interval
+
+inference(y=fear, x=owngun, data = df1.1, statistic = "proportion", type = "ci", method = "theoretical", success = "No")
+```
+
+``` {r : devtools toggle - 2, echo=FALSE, results='hide'}
+dev.off()
+
+```
+
+**Conclusion: **
+
+The confidence interval for the US population at large, **p~safe-with-gun~ - p~safe-without-gun~** is (0.1152, 0.1542)
+
+Thus we are 95% confident that for the period 2000 - 2012,  the proportion of US population that felt safe while possessing a gun was 11.52% to 15.42% higher than those who felt safe without it.
+
+**We also see that 0 is not included in the interval, thus confirming our finding from the hypothesis testing earlier**
+
+
+## Part 2.2: Research question 2:
+
+A recent article on CNN titled, [**US black-white inequality in 6 stark charts**](https://www.cnn.com/2020/06/03/politics/black-white-us-financial-inequality/index.html), shared grim statistics related to Black-White inequality in US. It claimed that these disparities exist because of a long history of policies that excluded and exploited black Americans.
+
+Does the GSS data provide evidence for such racial discrimination? We shall examine this by comparing the proportions of black Americans across ages who feel insecure with regards to their job to that of the white Americans for the same age group.
+
+If a relationship does exist then the claim made by the article might be true and it should be treated as a wake-up call by the policy makers to eliminate such racial discrimination.
+
+
+* * *
+
+## Part 3.2: Exploratory data analysis
+
+**DIRECT VARIABLES FROM GSS SURVEY DATABASE**
+
+  1. `age:` indicates the age of a respondent in years
+  2. `race:` indicates the race of the respondent
+  3. `joblose:` indicates if the respondent feels likely to lose his/her job
+
+
+```{r Selecting variable of interest 2, echo=FALSE}
+
+df2.1<-gss %>% select(age, race, joblose)
+summary(df2.1)
+```
+
+The population is then sorted on the basis of `age` into 6 distinct  age-groups while the # of levels of the `joblose` variable are reduced by combining from 6 to 2. The null values are omitted as well.
+```{r : Cleaning Data, message=FALSE, echo=FALSE}
+
+df2.1 <- df2.1 %>%
+  mutate(age_grp = ifelse(age <= 25, "Age 18-25" , ifelse(age <= 35, "Age 26-35" ,ifelse(age <= 45, "Age 36-45" ,ifelse(age <= 55, "Age 46-55", ifelse(age <= 65, "Age 56-65", "Age 65 +"))))))
+
+df2.1 <- df2.1 %>%
+  mutate(job_insec = ifelse(joblose == "Very Likely", "Yes", ifelse(joblose == "Fairly Likely", "Yes",ifelse(joblose == "Not Too Likely", "No",ifelse(joblose == "Not Likely", "No", "NA")))))
+
+df2.1 <- df2.1 %>%
+filter(!is.na(age_grp), !is.na(job_insec), job_insec != "NA")
+
+df2.1%>%
+  group_by(age_grp, job_insec)%>%
+  summarise(count=n())
+```
+
+
+```{r, echo=FALSE}
+# Side-by-Side stacked bar plot
+
+ggplot(df2.1, aes(x=age_grp, fill = job_insec)) +
+  geom_bar(position="fill", width = 0.6, color="black", size=0.5, alpha = 0.7) + facet_wrap (~ race, ncol=3) + theme(legend.position = "right", axis.text.x = element_text(angle=90, hjust = 0.8))+ labs(x="Age group", y="PROPORTION", title="JOB INSECURITY")
+```
+\
+
+The side-by-side stacked bar plot shows the distribution of Job insecurity across the various age groups & race.
+
+
+From the plot it appears that:
+
+1. The proportion of White Americans who feel insecure in their jobs decreases with increase in age. 
+
+2. The proportion of Black Americans who feel insecure in their jobs initially increases with increase in age and is maximum for the age group "Age 36-45" then dips to its minimum for the age group "Age 46-55". Post this it steadily rises again.
+
+3. The percentage of White Americans who feel insecure about their job are lesser than the percentage of Black Americans across each age group. Though the difference is observed in the graph, it is difficult to conclude if this difference is **statistically significant** or not.
+
+* * *
+
+## Part 4.2: Inference
+
+Since the two variables of interest are **categorical** in nature and since one of them, the age-group,  has 6 levels, we shall use the **Chi-square test of independence** to establish association between the variables to answer: **Does there appear to be a relationship between race & feeling of job insecurity?**
+
+We set the hypothesis test, at 5 % significance level as:
+
+<li> $H_0$ (Nothing going on): Race & the feeling of insecurity in a job are independent. </li>
+<li> $H_A$ (Something going on): Race & the feeling of insecurity in a job are dependent. </li>
+
+\ 
+
+The contingency table for the two variables of interest looks like:
+
+```{r : Cleaning data, echo=FALSE}
+
+df2.2<- df2.1 %>% select(job_insec, race, age_grp)
+df2.2<- df2.2 %>% filter(race!="Other")
+df2.2$race <- droplevels(df2.2$race)
+
+```
+
+
+```{r : Contingency table 2, echo=FALSE}
+
+rc_w_18_25<- nrow(df2.2[df2.2$race=="White" & df2.2$age_grp=="Age 18-25" & df2.2$job_insec=="Yes" ,])
+rc_b_18_25<- nrow(df2.2[df2.2$race=="Black" & df2.2$age_grp=="Age 18-25" & df2.2$job_insec=="Yes" ,])
+
+rc_w_26_35<- nrow(df2.2[df2.2$race=="White" & df2.2$age_grp=="Age 26-35" & df2.2$job_insec=="Yes" ,])
+rc_b_26_35<- nrow(df2.2[df2.2$race=="Black" & df2.2$age_grp=="Age 26-35" & df2.2$job_insec=="Yes" ,])
+
+rc_w_36_45<- nrow(df2.2[df2.2$race=="White" & df2.2$age_grp=="Age 36-45" & df2.2$job_insec=="Yes" ,])
+rc_b_36_45<- nrow(df2.2[df2.2$race=="Black" & df2.2$age_grp=="Age 36-45" & df2.2$job_insec=="Yes" ,])
+
+rc_w_46_55<- nrow(df2.2[df2.2$race=="White" & df2.2$age_grp=="Age 46-55" & df2.2$job_insec=="Yes" ,])
+rc_b_46_55<- nrow(df2.2[df2.2$race=="Black" & df2.2$age_grp=="Age 46-55" & df2.2$job_insec=="Yes" ,])
+
+rc_w_56_65<- nrow(df2.2[df2.2$race=="White" & df2.2$age_grp=="Age 56-65" & df2.2$job_insec=="Yes" ,])
+rc_b_56_65<- nrow(df2.2[df2.2$race=="Black" & df2.2$age_grp=="Age 56-65" & df2.2$job_insec=="Yes" ,])
+
+rc_w_65_above<- nrow(df2.2[df2.2$race=="White" & df2.2$age_grp=="Age 65 +" & df2.2$job_insec=="Yes" ,])
+rc_b_65_above<- nrow(df2.2[df2.2$race=="Black" & df2.2$age_grp=="Age 65 +" & df2.2$job_insec=="Yes" ,])
+
+ttl_w <- rc_w_18_25 + rc_w_26_35 + rc_w_36_45 + rc_w_46_55 + rc_w_56_65 + rc_w_65_above
+ttl_b <- rc_b_18_25 + rc_b_26_35 + rc_b_36_45 + rc_b_46_55 + rc_b_56_65 + rc_b_65_above
+grnd_ttl <- ttl_w + ttl_b
+
+ttl_18_25 <- rc_w_18_25 + rc_b_18_25
+ttl_26_35 <- rc_w_26_35 + rc_b_26_35
+ttl_36_45 <- rc_w_36_45 + rc_b_36_45
+ttl_46_55 <- rc_w_46_55 + rc_b_46_55
+ttl_56_65 <- rc_w_56_65 + rc_b_56_65
+ttl_65_above <- rc_w_65_above + rc_b_65_above
+
+  
+Contingency_table2 <- matrix(c(rc_w_18_25, rc_w_26_35, rc_w_36_45, rc_w_46_55, rc_w_56_65, rc_w_65_above, ttl_w, rc_b_18_25, rc_b_26_35,  rc_b_36_45, rc_b_46_55, rc_b_56_65, rc_b_65_above, ttl_b, ttl_18_25, ttl_26_35, ttl_36_45, ttl_46_55, ttl_56_65, ttl_65_above, grnd_ttl ),ncol=7,byrow=TRUE)
+colnames(Contingency_table2) <- c("Age 18-25","Age 26-35", "Age 36-45", "Age 46-55", "Age 56-65", "Age 65+", "Total")
+rownames(Contingency_table2) <- c("White", "Black", "Total")
+Contingency_table2 <- as.table(Contingency_table2)
+
+kable(Contingency_table2) %>%
+  add_header_above(c("CONTINGENCY TABLE 2: FEELING INSECURE FOR JOB "=8))%>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+
+
+<li> **Checking for Conditions:**</li>
+
+**1. Independence: Sampled observations must be independent**
+
+Since the individuals were randomly sampled without replacement, each individual contributes to only one cell in the table & since sample population < 10% of the US population, this condition is met.
+  
+  
+**2. Sample size:Each particular scenario must have at least 5 expected cases** 
+
+Referring to the table, we see that all the values > 5 & hence conclude that this condition is met as well.
+\
+
+**Since the conditions are met, we can now proceed with the Chi-square test of independence.**
+
+
+``` {r : Chi-square test of independence, echo=FALSE}
+df2.3 <- df2.2 %>% filter(job_insec=="Yes")
+chisq.test(df2.3$race, df2.3$age_grp)
+
+```
+
+**Conclusion: **
+
+Since the p_value < 0.05 for the set significance level, we reject the null hypothesis in favor of the alternative.
+
+**Thus we conclude that an association between the race of an individual & his/her feeling insecure about their jobs does exist which falls in line with the claim made by the CNN article.**
+
+## Part 2.3: Research question 3:
+
+"The increase in household size is significant because it could have implications for national economic growth" says Richard Fry, Senior Researcher [PEW Research Centre, Fact-Tank](https://www.pewresearch.org/fact-tank/2019/10/01/the-number-of-people-in-the-average-u-s-household-is-going-up-for-the-first-time-in-over-160-years/)
+
+**Has the average family size in US changed over the decades?**
+
+In general one can anticipate that the number of households are increasing as can be seen from the rise in population. However, what remains to be determined is if the number of members per household have increased over the past multiple decades? 
+
+A significant rise in number of people per household could result in a rise in the poverty line. This could impact the nation's economic growth and necessitate the development of new policies. 
+
+ 
+
+* * *
+
+## Part 3.3: Exploratory data analysis
+
+**DIRECT VARIABLES FROM GSS SURVEY DATABASE**
+
+  1. `age:` indicates the age of a respondent in years
+  2. `year:` indicates the year of the survey
+  3. `childs:` indicates the # of children in the family, an indicator of family size
+
+
+We start by picking up the variables of interest for the data set. 
+
+**One important thing to note is that we would be considering individual over the age of 35 years for this analysis, since this is the age around which the family size usually gets defined.**
+
+```{r Selecting variable of interest 3, message=FALSE, echo=FALSE}
+
+df3.1<-gss %>% select(age, year, childs)
+
+df3.1 <- df3.1 %>%
+filter(!is.na(year), !is.na(childs), age>=35)
+
+df3.1 <- df3.1 %>%
+  mutate(yr_grp = ifelse(year <= 1980, "1970 - 80", ifelse(year <= 1990, "1980 - 90" ,ifelse(year <= 2000, "1990 - 2K" ,ifelse(year <= 2010, "2000 - 10" , "2010 - 20")))))
+
+```
+
+
+```{r, echo=FALSE}
+# Side-by-Side box plot
+
+boxplot(df3.1$childs ~ df3.1$yr_grp, range=1.0, varwidth=FALSE, notch=FALSE, outline=FALSE, boxwex=0.6, border=c("blue"), xlab = "", ylab = "# of children  ",las = 2, pars=list(par(mar=c(8,8,4,2))))
+mtext("Time period", side=1, line =7)
+
+```
+\
+The side-by-side box-plot highlights the following:
+
+1. Since the distribution of # of children in a household cannot be less than 0, it has a natural boundary of 0 at the bottom. The data is expected to have some right-skewness which is evident from the plots.
+
+2. The right-skewness seems to be evident in the earlier decades until the 90's post which data seems to be nearly normal.
+
+3. The family sizes were larger until the 90's post which they seem to have remained fairly constant. Also the data until 90's shows more variability compared to the later decades.
+
+
+## Part 4.3: Inference
+
+Since we are dealing with one numerical & one categorical variable with more than 2 levels, we shall use **ANOVA** to compare the means across several groups.
+
+**Has the average family size in US changed over the decades?**
+
+
+We set the hypothesis test, at 5 % significance level as:
+
+<li> $H_0$ (Nothing going on): Average family size has remained constant over the decades. </li>
+<li> $H_A$ (Something going on): Average family size between atleast one pair of time periods has changed. </li>
+
+\ 
+
+***
+```{r : Summary Table, echo=FALSE, message=FALSE}
+
+df3.1%>%
+  group_by(yr_grp)%>%
+  summarise(n= n(), Mean=mean(childs), Std_dev = sd(childs))
+```
+
+
+<li> **Checking for Conditions:**</li>
+
+**1. Independence:Sampled observations must be independent of each other**
+
+**a. Within groups:** Since the individuals were randomly sampled without replacement & since for each time period, the total # of individuals < 10% of the US population, this condition is met.
+  
+**b. Between groups:** Since only one person from each household was interviewed, the two groups are independent of each other.
+\  
+  
+**2. Approximate normality: Distributions should be nearly normal within each group** 
+
+Looking at the side-by-side box-plots we see that for each group the distribution is nearly normal.
+\
+
+**3. Equal variance: Groups should have roughly equal variability** 
+
+Looking at the side-by-side box-plots & values of the standard deviation in the summary table,  we can conclude that the variability between the groups are roughly equal.
+
+\
+**Since the conditions are met, we can now proceed with the ANOVA test.**
+```{r : Summary , echo=FALSE}
+res.aov <- aov(df3.1$childs ~ df3.1$yr_grp)
+# Summary of the analysis
+summary(res.aov)
+```
+
+**Conclusion: **
+
+Since the p_value < 0.05 for the set significance level, we reject the null hypothesis in favor of the alternative.
+
+Thus we conclude that for atleast one of the pairs of time period, the average family size has changed.
+
+We would also want to know for which pairs of time period the average family size has changed.
+\
+\
+**Applying Bonferroni correction: **
+
+The **Bonferroni correction** suggests that a more stringent significance level ($\alpha^*$) is appropriate for testing many pairs of groups:
+\
+\
+$\alpha^*$ = $\alpha$ / K,  where $\alpha$ = significance level set for ANOVA & K: # of paired t-tests required
+\
+\
+$K = k(k-1)/2,$  where k: # of levels of the categorical variable
+\
+\
+$K = 5 X 4 / 2 = 10$
+\
+\
+$\alpha^* = 0.05/10 = `r round(0.05/10,digits=3)`$... the new significance level
+\
+\
+Conducting the Pairwise t.test for the data we get:
+```{r : Pairwise T-test, echo=FALSE}
+
+pairwise.t.test(df3.1$childs, df3.1$yr_grp, p.adj ="bonf")
+
+```
+**Conclusion: **
+
+1. The summary table gives the p_value for all the 10 pair combinations.
+
+2. We can see that the p_value for all the pairs with **Period 1970 - 80** & **Period 1980 - 90** are less than the set significance level of `r round(0.05/10,digits=3)`. Thus, the average size of the families for these periods are different from each other as well as the rest of the periods.
+
+3. We can see that the $p_{value}$ for all remaining pairs with **Period 1990 - 2K, Period 2000 - 10 & Period 2010-20** are greater than the set significance level of `r round(0.05/10,digits=3)`. Thus, the average size of the families for these periods seem to be the same.
+
+\
+\
+\
+
+
+
+
+
