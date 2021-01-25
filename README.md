@@ -1,12 +1,12 @@
 # Data Analysis Project # 2
 
-**Dataset filename:** gss.RData
-
 Project for online course on 'Inferential Statistics', Duke University. 
 
 This was course 2 of 5 under the 'Statistics with R Specialization'.
 
 # Dataset Information:
+
+**Dataset filename:** gss.RData
 
 The dataset from General Social Survey (GSS) was provided for this analysis.
 
