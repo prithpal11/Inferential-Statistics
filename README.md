@@ -1,10 +1,8 @@
-# Inferential-Statistics
+# Data Analysis Project # 2
 
-# Data Analysis Project # 1
+Project for online course on 'Inferential Statistics', Duke University. 
 
-Project for online course on 'Introduction to Probability and Data with R', Duke University. 
-
-This was course 1 of 5 under the 'Statistics with R Specialization'.
+This was course 2 of 5 under the 'Statistics with R Specialization'.
 
 # Project Information:
 
